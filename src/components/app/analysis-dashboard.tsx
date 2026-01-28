@@ -12,7 +12,6 @@ import {
   CheckCircle,
   AlertTriangle,
   Zap,
-  CopyWarning,
   Copy,
   Link,
   RotateCcw,
@@ -219,7 +218,7 @@ export function AnalysisDashboard({
           <StatCard
             title="Duplicates"
             value={results?.duplicates.count ?? '--'}
-            icon={CopyWarning}
+            icon={Copy}
             isLoading={isLoading}
           />
         </motion.div>
