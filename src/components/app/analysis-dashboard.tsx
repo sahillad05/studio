@@ -19,6 +19,9 @@ import {
   Download,
   ArrowRightLeft,
 } from 'lucide-react';
+import { useState } from 'react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 import type { AnalysisResult } from '@/types';
 import type { AnalysisStatus } from '@/app/page';
@@ -68,19 +71,54 @@ export function AnalysisDashboard({
   onReset,
 }: AnalysisDashboardProps) {
   const isLoading = status === 'loading' || !results;
+  const [openAccordions, setOpenAccordions] = useState<string[]>(['eda']);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  const ALL_ACCORDIONS = ['eda', 'drift', 'leakage', 'bias', 'correlations', 'duplicates'];
 
   const handleDownloadReport = () => {
     if (!results || !fileName) return;
 
-    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
-      JSON.stringify(results, null, 2)
-    )}`;
-    const link = document.createElement('a');
-    link.href = jsonString;
-    const cleanFileName = fileName.replace(/\.csv$/i, '');
-    link.download = `${cleanFileName}-analysis-report.json`;
+    setIsDownloadingPdf(true);
+    const currentOpen = [...openAccordions];
+    // We open all accordions to get the full report in the PDF
+    setOpenAccordions(ALL_ACCORDIONS);
 
-    link.click();
+    // We need to wait for the DOM to update with the accordions open
+    setTimeout(() => {
+      const reportElement = document.getElementById('analysis-dashboard');
+      if (!reportElement) {
+        setIsDownloadingPdf(false);
+        setOpenAccordions(currentOpen);
+        return;
+      }
+
+      // html2canvas can have issues with transparent backgrounds in dark mode
+      const bodyBackgroundColor = window.getComputedStyle(document.body).backgroundColor;
+
+      html2canvas(reportElement, {
+        scale: 2, // for better quality
+        useCORS: true,
+        backgroundColor: bodyBackgroundColor,
+      }).then((canvas) => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'px',
+          // Use the canvas dimensions for the PDF page size
+          format: [canvas.width, canvas.height],
+        });
+
+        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+
+        const cleanFileName = fileName.replace(/\.csv$/i, '');
+        pdf.save(`${cleanFileName}-analysis-report.pdf`);
+      }).finally(() => {
+        // Reset the state
+        setOpenAccordions(currentOpen);
+        setIsDownloadingPdf(false);
+      });
+    }, 500);
   };
 
   const FADE_UP_ANIMATION_VARIANTS = {
@@ -95,6 +133,7 @@ export function AnalysisDashboard({
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
       className="space-y-8"
+      id="analysis-dashboard"
     >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -109,13 +148,13 @@ export function AnalysisDashboard({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
+           <Button
             onClick={handleDownloadReport}
             variant="outline"
-            disabled={isLoading}
+            disabled={isLoading || isDownloadingPdf}
           >
             <Download />
-            Download Report
+            {isDownloadingPdf ? 'Downloading...' : 'Download Report'}
           </Button>
           <Button onClick={onReset}>
             <RotateCcw />
@@ -187,7 +226,12 @@ export function AnalysisDashboard({
       </div>
 
       {/* Accordion for details */}
-      <Accordion type="multiple" className="w-full space-y-4">
+      <Accordion 
+        type="multiple"
+        className="w-full space-y-4"
+        value={openAccordions}
+        onValueChange={setOpenAccordions}
+      >
         <AnalysisCard
           title="Automated EDA"
           icon={ScanSearch}
@@ -223,9 +267,9 @@ export function AnalysisDashboard({
           ) : (
             <AiExplanation
               isLoading={isLoading}
-              explanation={results.drift.summary}
-              recommendation={results.drift.recommendations}
-              risk={results.drift.riskLevel}
+              explanation={results?.drift.summary ?? ''}
+              recommendation={results?.drift.recommendations}
+              risk={results?.drift.riskLevel}
             />
           )}
         </AnalysisCard>
