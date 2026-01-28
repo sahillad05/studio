@@ -36,6 +36,18 @@ const calculateCorrelation = (arr1: number[], arr2: number[]): number => {
     return num / den;
 };
 
+// Helper function to identify ID-like columns
+const isIdColumn = (header: string, columnIndex: number, data: any[][]): boolean => {
+    if (header.toLowerCase().includes('id')) return true;
+    const columnData = data.map(row => row[columnIndex]);
+    const uniqueValues = new Set(columnData);
+    // If over 95% of values are unique in a column with more than 10 rows, it's likely an ID.
+    if (data.length > 10 && uniqueValues.size / data.length > 0.95) {
+        return true;
+    }
+    return false;
+};
+
 // ANALYSIS MODULES
 async function analyzeEDA(
   data: any[][],
@@ -125,10 +137,11 @@ async function analyzeBias(
   const targetData = getColumn(data, headers, targetColumn);
   const classCounts: Record<string, number> = {};
   targetData.forEach(val => {
-    classCounts[val] = (classCounts[val] || 0) + 1;
+    const key = String(val);
+    classCounts[key] = (classCounts[key] || 0) + 1;
   });
   
-  const classImbalanceRatio = Math.min(...Object.values(classCounts)) / Math.max(...Object.values(classCounts));
+  const classImbalanceRatio = Object.values(classCounts).length > 1 ? Math.min(...Object.values(classCounts)) / Math.max(...Object.values(classCounts)) : 1;
   const classImbalanceDetected = classImbalanceRatio < 0.1; // Threshold for severe imbalance
   const classImbalanceSummary = classImbalanceDetected ? 
     `Detected. The ratio between the minority and majority class is ${classImbalanceRatio.toFixed(2)}.` : 
@@ -141,10 +154,11 @@ async function analyzeBias(
       const colData = getColumn(data, headers, header);
       const counts: Record<string, number> = {};
       colData.forEach(val => {
-        counts[val] = (counts[val] || 0) + 1;
+        const key = String(val);
+        counts[key] = (counts[key] || 0) + 1;
       });
-      const dominantValue = Object.values(counts).find(count => count / data.length > 0.9);
-      if (dominantValue) {
+      const dominantValueCount = Object.values(counts).find(count => count / data.length > 0.9);
+      if (dominantValueCount) {
         featureDominanceDetected = true;
         featureDominanceSummary = `Detected in feature "${header}". One value represents over 90% of the data.`;
         break;
@@ -175,7 +189,7 @@ async function analyzeDrift(data: any[][], headers: string[]): Promise<AnalysisR
             applicable: false,
             detected: false,
             psiScores: {},
-            summary: 'Not Applicable. Drift analysis requires a time-based column.',
+            summary: 'Not Applicable. Drift analysis requires a time-based column which was not detected in the dataset.',
             riskLevel: 'Low',
             recommendations: [],
         };
@@ -201,10 +215,30 @@ async function analyzeDrift(data: any[][], headers: string[]): Promise<AnalysisR
 }
 
 
-async function analyzeDuplicates(data: any[][]): Promise<DuplicatesAnalysis> {
+async function analyzeDuplicates(data: any[][], headers: string[]): Promise<DuplicatesAnalysis> {
+    if (data.length === 0) {
+        return { detected: false, duplicateGroups: 0, affectedRows: 0, impactPercentage: 0, summary: 'No data to analyze for duplicates.' };
+    }
+
+    const featureColumnIndices = headers
+        .map((header, index) => ({ header, index }))
+        .filter(({ header, index }) => !isIdColumn(header, index, data))
+        .map(({ index }) => index);
+    
+    if (featureColumnIndices.length === 0) {
+        return { 
+            detected: false, 
+            duplicateGroups: 0, 
+            affectedRows: 0, 
+            impactPercentage: 0, 
+            summary: 'Could not perform duplicate analysis because all columns were identified as ID-like.' 
+        };
+    }
+
     const seen = new Map<string, number>();
     data.forEach(row => {
-        const rowString = JSON.stringify(row);
+        const featureRow = featureColumnIndices.map(index => row[index]);
+        const rowString = JSON.stringify(featureRow);
         seen.set(rowString, (seen.get(rowString) || 0) + 1);
     });
 
@@ -226,8 +260,8 @@ async function analyzeDuplicates(data: any[][]): Promise<DuplicatesAnalysis> {
         affectedRows,
         impactPercentage,
         summary: detected ?
-            `Found ${duplicateGroups} groups of duplicate rows, affecting ${affectedRows} records (${impactPercentage.toFixed(2)}% of the dataset).` :
-            'No exact duplicate rows were found in the dataset.',
+            `Found ${duplicateGroups} groups of duplicate rows based on feature columns, affecting ${affectedRows} records (${impactPercentage.toFixed(2)}% of the dataset). ID-like columns were excluded from this analysis.` :
+            'No exact duplicate rows were found in the dataset based on feature columns.',
     };
 }
 
@@ -236,56 +270,50 @@ async function analyzeSpuriousCorrelations(
   headers: string[],
   targetColumn: string
 ): Promise<AnalysisResult['spuriousCorrelations']> {
+  
+  const idColumns = headers.filter((h, i) => isIdColumn(h, i, data) && h !== targetColumn);
+
+  if (idColumns.length > 0) {
+    const identifiedColumn = idColumns[0];
+    return {
+        detected: true,
+        correlations: [{ feature: identifiedColumn, correlation: NaN }],
+        explanation: `The feature '${identifiedColumn}' was identified as an ID-like or high-cardinality column. Such features have no logical or causal relationship with the target variable and can lead to overfitting and an unstable model. They are predictive only by chance in the training data and will not generalize to new data.`,
+        riskLevel: 'Medium',
+        recommendation: `Remove the '${identifiedColumn}' feature from your model training data to improve generalization and stability.`,
+    };
+  }
+
   const targetData = getNumericColumn(data, headers, targetColumn);
   if(targetData.length === 0) {
      return {
         detected: false,
         correlations: [],
-        explanation: 'Target column is not numeric, spurious correlation on ID-like columns was not performed.',
+        explanation: 'No obvious spurious correlations with ID-like features were found. Correlation analysis on other features was skipped as the target column is not numeric.',
         riskLevel: 'Low',
-        recommendation: 'No action needed.',
+        recommendation: 'No action needed regarding spurious correlations.',
     };
   }
-
-  const idLikeColumns = headers.filter(h => h.toLowerCase().includes('id'));
-  for (const col of idLikeColumns) {
-      const colData = getNumericColumn(data, headers, col);
-      if(colData.length > 0) {
-        const corr = calculateCorrelation(targetData, colData);
-        if (Math.abs(corr) > 0.5 && Math.abs(corr) < 0.99) { // High but not perfect
-            const { explanation, recommendation, riskLevel } = await explainSpuriousCorrelation({
-                featureName: col,
-                targetName: targetColumn,
-                correlationScore: corr,
-                datasetDescription: 'A user-uploaded dataset.'
-            });
-            return {
-                detected: true,
-                correlations: [{ feature: col, correlation: corr }],
-                explanation,
-                riskLevel,
-                recommendation,
-            }
-        }
-      }
-  }
-
+  
   return {
     detected: false,
     correlations: [],
-    explanation: 'No obvious spurious correlations with ID-like features were found.',
+    explanation: 'No obvious spurious correlations with ID-like features were found. Continue to be mindful of features that have no logical relationship to the target.',
     riskLevel: 'Low',
-    recommendation: 'Continue to be mindful of features that have no logical relationship to the target.',
+    recommendation: 'No action needed.',
   };
 }
 
 function calculateScores(results: Omit<AnalysisResult, 'scores'>): AnalysisResult['scores'] {
     let overall = 100;
     
-    // Leakage
+    // Leakage: High risk imposes a hard cap.
     const leakageScore = results.leakage.riskLevel === 'High' ? 100 : (results.leakage.riskLevel === 'Medium' ? 50 : 0);
-    if(results.leakage.riskLevel === 'High') overall = Math.min(overall, 40);
-    overall -= leakageScore * 0.4; // 40% weight
+    if (results.leakage.riskLevel === 'High') {
+      overall = 40; // Hard cap on score
+    } else {
+      overall -= leakageScore * 0.4; // 40% weight for medium risk
+    }
     
     // Bias
     const biasScore = results.bias.riskLevel === 'High' ? 80 : (results.bias.riskLevel === 'Medium' ? 40 : 0);
@@ -296,10 +324,10 @@ function calculateScores(results: Omit<AnalysisResult, 'scores'>): AnalysisResul
     overall -= driftScore * 0.2; // 20% weight
 
     // Duplicates
-    overall -= results.duplicates.impactPercentage * 0.1; // 10% weight
+    overall -= results.duplicates.impactPercentage * 0.1; // 10% weight. e.g. 20% duplicates = -2 points
 
-    // Spurious
-    const spuriousScore = results.spuriousCorrelations.riskLevel === 'High' ? 50 : 0;
+    // Spurious Correlations
+    const spuriousScore = results.spuriousCorrelations.riskLevel === 'High' ? 50 : (results.spuriousCorrelations.riskLevel === 'Medium' ? 25 : 0);
     overall -= spuriousScore * 0.1; // 10% weight
     
     return {
@@ -334,7 +362,7 @@ export const runDataQualityAnalysis = async (
       analyzeLeakage(rows, headers, targetColumn),
       analyzeBias(rows, headers, targetColumn),
       analyzeDrift(rows, headers),
-      analyzeDuplicates(rows),
+      analyzeDuplicates(rows, headers),
       analyzeSpuriousCorrelations(rows, headers, targetColumn)
   ]);
 

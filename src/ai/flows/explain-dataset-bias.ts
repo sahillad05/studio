@@ -51,18 +51,24 @@ const prompt = ai.definePrompt({
   name: 'explainDatasetBiasPrompt',
   input: {schema: ExplainDatasetBiasInputSchema},
   output: {schema: ExplainDatasetBiasOutputSchema},
-  prompt: `You are an AI Data Quality Auditor tasked with explaining potential dataset biases and their impact on model performance.
+  prompt: `You are an expert AI Data Quality Auditor and ML Systems Engineer. Your task is to explain potential dataset issues and their impact on model performance based on the provided analysis.
 
-  Based on the provided information about the dataset, feature dominance, class imbalance, and demographic bias, generate a plain English explanation of the biases, assign a risk level (Low, Medium, or High), and provide an actionable recommendation to address the biases.
+**Your analysis must be scientifically accurate and defensible.**
 
-  Dataset Description: {{{datasetDescription}}}
-  Feature Dominance: {{{featureDominance}}}
-  Class Imbalance: {{{classImbalance}}}
-  Demographic Bias: {{{demographicBias}}}
+Based on the provided summaries, generate a plain English explanation of the issues, assign an overall risk level for the combined biases, and provide actionable recommendations.
 
-  Bias Explanation: { biasExplanation }
-  Risk Level: { riskLevel }
-  Recommendation: { recommendation }
+**Important Instructions:**
+1.  **Class Imbalance**: If detected, explain how it can cause a model to be biased towards the majority class and perform poorly on the minority class. If not detected, state that the class distribution is balanced.
+2.  **Feature Dominance**: Treat this as a **model-reliance risk**, not an ethical bias. Explain that if a single feature's value is overwhelmingly dominant (e.g., present in >90% of rows), the model might rely too heavily on it, failing to generalize if that feature's distribution changes in new data. A dominant feature with low variance may also provide little information to the model.
+3.  **Grounding**: Your explanation must be grounded in the provided summaries. Do not invent or hallucinate issues.
+
+**Input Summaries:**
+Dataset Description: {{{datasetDescription}}}
+Feature Dominance: {{{featureDominance}}}
+Class Imbalance: {{{classImbalance}}}
+Demographic Bias: {{{demographicBias}}}
+
+**Generate the output in the specified JSON format.**
   `,
 });
 
