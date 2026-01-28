@@ -295,7 +295,7 @@ export function AnalysisDashboard({
         </AnalysisCard>
 
         <AnalysisCard
-          title="Dataset Bias"
+          title="Dataset Bias & Model Reliance"
           icon={AlertTriangle}
           isLoading={isLoading}
           value="bias"
@@ -308,16 +308,16 @@ export function AnalysisDashboard({
             </div>
           ) : (
             <div className="space-y-4">
-              <h4 className="font-semibold">Bias Analysis Summary</h4>
+              <h4 className="font-semibold">Analysis Summary</h4>
               <ul className="list-disc space-y-2 pl-5 text-muted-foreground">
                 <li>
                   <strong>Class Imbalance:</strong> {results.bias.classImbalance.summary}
                 </li>
                 <li>
-                  <strong>Feature Dominance:</strong> {results.bias.featureDominance.summary}
+                  <strong>Model Reliance Risk:</strong> {results.bias.featureDominance.summary}
                 </li>
                 <li>
-                  <strong>Categorical Distribution:</strong> {results.bias.categoricalDistribution.summary}
+                  <strong>Demographic Bias:</strong> {results.bias.categoricalDistribution.summary}
                 </li>
               </ul>
               <AiExplanation

@@ -51,21 +51,22 @@ const prompt = ai.definePrompt({
   name: 'explainDatasetBiasPrompt',
   input: {schema: ExplainDatasetBiasInputSchema},
   output: {schema: ExplainDatasetBiasOutputSchema},
-  prompt: `You are an expert AI Data Quality Auditor and ML Systems Engineer. Your task is to explain potential dataset issues and their impact on model performance based on the provided analysis.
+  prompt: `You are an expert AI Data Quality Auditor and ML Systems Engineer, preparing a report for an academic evaluation. Your task is to explain potential dataset issues and their impact on model performance based on the provided analysis.
 
 **Your analysis must be scientifically accurate and defensible.**
 
-Based on the provided summaries, generate a plain English explanation of the issues, assign an overall risk level for the combined biases, and provide actionable recommendations.
+Based on the provided summaries, generate a plain English explanation of the issues, assign an overall risk level for the combined issues, and provide actionable recommendations.
 
 **Important Instructions:**
-1.  **Class Imbalance**: If detected, explain how it can cause a model to be biased towards the majority class and perform poorly on the minority class. If not detected, state that the class distribution is balanced.
-2.  **Feature Dominance**: Treat this as a **model-reliance risk**, not an ethical bias. Explain that if a single feature's value is overwhelmingly dominant (e.g., present in >90% of rows), the model might rely too heavily on it, failing to generalize if that feature's distribution changes in new data. A dominant feature with low variance may also provide little information to the model.
-3.  **Grounding**: Your explanation must be grounded in the provided summaries. Do not invent or hallucinate issues.
+1.  **Class Imbalance**: If detected, explain how it can cause a model to be biased towards the majority class and perform poorly on the minority class. If not detected, state that the class distribution is balanced and that this type of bias is not a concern.
+2.  **Feature Dominance (Model Reliance Risk)**: Treat this as a **model-reliance risk**, not an ethical bias. Explain that if a single feature's value is overwhelmingly dominant (e.g., present in >90% of rows), the model might learn to rely too heavily on it. This poses a risk to **generalization and stability** if the data distribution changes in new, unseen data. It does not affect fairness unless the feature itself is a sensitive attribute.
+3.  **Demographic Bias**: Only comment on this if information is provided. If the summary states it was not analyzed, mention that an audit for ethical biases would require identifying and analyzing sensitive attributes (e.g., race, gender), which was not part of this assessment.
+4.  **Grounding**: Your explanation must be strictly grounded in the provided summaries. Do not invent or hallucinate issues.
 
 **Input Summaries:**
 Dataset Description: {{{datasetDescription}}}
-Feature Dominance: {{{featureDominance}}}
 Class Imbalance: {{{classImbalance}}}
+Feature Dominance: {{{featureDominance}}}
 Demographic Bias: {{{demographicBias}}}
 
 **Generate the output in the specified JSON format.**
