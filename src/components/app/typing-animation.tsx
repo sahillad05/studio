@@ -15,6 +15,11 @@ export function TypingAnimation({ text, className, duration = 0.02 }: TypingAnim
   useEffect(() => {
     let i = 0;
     setDisplayedText('');
+
+    if (!text) {
+      return;
+    }
+
     const intervalId = setInterval(() => {
       setDisplayedText(text.substring(0, i));
       i++;
