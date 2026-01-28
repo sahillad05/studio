@@ -203,7 +203,7 @@ export function AnalysisDashboard({
             )}
             <AiExplanation
               isLoading={isLoading}
-              explanation={results!.eda.summary}
+              explanation={results?.eda.summary ?? ''}
             />
           </div>
         </AnalysisCard>
@@ -214,7 +214,7 @@ export function AnalysisDashboard({
           isLoading={isLoading}
           value="drift"
         >
-          {isLoading || !results!.drift.detected ? (
+          {isLoading || !results?.drift.detected ? (
             <p className="p-6 pt-0 text-muted-foreground">
               {isLoading
                 ? 'Analyzing...'
@@ -223,9 +223,9 @@ export function AnalysisDashboard({
           ) : (
             <AiExplanation
               isLoading={isLoading}
-              explanation={results!.drift.summary}
-              recommendation={results!.drift.recommendations}
-              risk={results!.drift.riskLevel}
+              explanation={results.drift.summary}
+              recommendation={results.drift.recommendations}
+              risk={results.drift.riskLevel}
             />
           )}
         </AnalysisCard>
@@ -238,9 +238,9 @@ export function AnalysisDashboard({
         >
           <AiExplanation
             isLoading={isLoading}
-            explanation={results!.leakage.explanation}
-            recommendation={results!.leakage.recommendation}
-            risk={results!.leakage.riskLevel}
+            explanation={results?.leakage.explanation ?? ''}
+            recommendation={results?.leakage.recommendation}
+            risk={results?.leakage.riskLevel}
           />
         </AnalysisCard>
 
@@ -252,9 +252,9 @@ export function AnalysisDashboard({
         >
           <AiExplanation
             isLoading={isLoading}
-            explanation={results!.bias.explanation}
-            recommendation={results!.bias.recommendation}
-            risk={results!.bias.riskLevel}
+            explanation={results?.bias.explanation ?? ''}
+            recommendation={results?.bias.recommendation}
+            risk={results?.bias.riskLevel}
           />
         </AnalysisCard>
 
@@ -266,9 +266,9 @@ export function AnalysisDashboard({
         >
           <AiExplanation
             isLoading={isLoading}
-            explanation={results!.spuriousCorrelations.explanation}
-            recommendation={results!.spuriousCorrelations.recommendation}
-            risk={results!.spuriousCorrelations.riskLevel}
+            explanation={results?.spuriousCorrelations.explanation ?? ''}
+            recommendation={results?.spuriousCorrelations.recommendation}
+            risk={results?.spuriousCorrelations.riskLevel}
           />
         </AnalysisCard>
 
@@ -297,7 +297,7 @@ export function AnalysisDashboard({
             </div>
             <AiExplanation
               isLoading={isLoading}
-              explanation={results!.duplicates.summary}
+              explanation={results?.duplicates.summary ?? ''}
             />
           </div>
         </AnalysisCard>
