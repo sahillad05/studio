@@ -48,7 +48,7 @@ const StatCard = ({
   <Card className="transition-all hover:border-primary/50 hover:shadow-lg">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
       <CardTitle className="text-sm font-medium">{title}</CardTitle>
-      <Icon className="h-4 w-4 text-muted-foreground" />
+      {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
     </CardHeader>
     <CardContent>
       {isLoading ? (
@@ -143,7 +143,7 @@ export function AnalysisDashboard({
                   <Skeleton className="h-48 w-48 rounded-full" />
                 </div>
               ) : (
-                <ScoreGauge value={results!.scores.overall} />
+                results && <ScoreGauge value={results.scores.overall} />
               )}
             </CardContent>
           </Card>
@@ -199,7 +199,7 @@ export function AnalysisDashboard({
             {isLoading ? (
               <Skeleton className="h-64 w-full" />
             ) : (
-              <DistributionChart data={results!.eda.distributions} />
+              results && <DistributionChart data={results.eda.distributions} />
             )}
             <AiExplanation
               isLoading={isLoading}
