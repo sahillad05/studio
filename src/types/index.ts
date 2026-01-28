@@ -1,0 +1,50 @@
+export interface AnalysisResult {
+  scores: {
+    overall: number;
+    leakage: number;
+    bias: number;
+    drift: number;
+  };
+  eda: {
+    missingValues: {
+      total: number;
+      byColumn: Record<string, number>;
+    };
+    distributions: Array<{ name: string; value: number }>;
+    summary: string;
+  };
+  leakage: {
+    detected: boolean;
+    leakyFeatures: string[];
+    explanation: string;
+    riskLevel: 'Low' | 'Medium' | 'High';
+    recommendation: string;
+  };
+  bias: {
+    detected: boolean;
+    featureDominance: string;
+    classImbalance: string;
+    explanation: string;
+    riskLevel: 'Low' | 'Medium' | 'High';
+    recommendation: string;
+  };
+  drift: {
+    detected: boolean;
+    psiScores: Record<string, number>;
+    summary: string;
+    riskLevel: 'Low' | 'Medium' | 'High';
+    recommendations: string[];
+  };
+  duplicates: {
+    count: number;
+    nearDuplicates: number;
+    summary: string;
+  };
+  spuriousCorrelations: {
+    detected: boolean;
+    correlations: Array<{ feature: string; correlation: number }>;
+    explanation: string;
+    riskLevel: 'Low' | 'Medium' | 'High';
+    recommendation: string;
+  };
+}
