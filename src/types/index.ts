@@ -1,3 +1,29 @@
+export interface BiasAnalysis {
+  classImbalance: {
+    detected: boolean;
+    summary: string;
+  };
+  featureDominance: {
+    detected: boolean;
+    summary: string;
+  };
+  categoricalDistribution: {
+    detected: boolean;
+    summary: string;
+  };
+  explanation: string;
+  riskLevel: 'Low' | 'Medium' | 'High';
+  recommendation: string;
+}
+
+export interface DuplicatesAnalysis {
+  detected: boolean;
+  duplicateGroups: number;
+  affectedRows: number;
+  impactPercentage: number;
+  summary: string;
+}
+
 export interface AnalysisResult {
   scores: {
     overall: number;
@@ -20,26 +46,16 @@ export interface AnalysisResult {
     riskLevel: 'Low' | 'Medium' | 'High';
     recommendation: string;
   };
-  bias: {
-    detected: boolean;
-    featureDominance: string;
-    classImbalance: string;
-    explanation: string;
-    riskLevel: 'Low' | 'Medium' | 'High';
-    recommendation: string;
-  };
+  bias: BiasAnalysis;
   drift: {
+    applicable: boolean;
     detected: boolean;
     psiScores: Record<string, number>;
     summary: string;
     riskLevel: 'Low' | 'Medium' | 'High';
     recommendations: string[];
   };
-  duplicates: {
-    count: number;
-    nearDuplicates: number;
-    summary: string;
-  };
+  duplicates: DuplicatesAnalysis;
   spuriousCorrelations: {
     detected: boolean;
     correlations: Array<{ feature: string; correlation: number }>;

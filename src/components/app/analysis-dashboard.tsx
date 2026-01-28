@@ -212,12 +212,12 @@ export function AnalysisDashboard({
           <StatCard
             title="Drift Score"
             value={`${results?.scores.drift ?? '--'}%`}
-            icon={CheckCircle}
+            icon={ArrowRightLeft}
             isLoading={isLoading}
           />
           <StatCard
             title="Duplicates"
-            value={results?.duplicates.count ?? '--'}
+            value={results?.duplicates.affectedRows ?? '--'}
             icon={Copy}
             isLoading={isLoading}
           />
@@ -239,10 +239,10 @@ export function AnalysisDashboard({
         >
           <div className="space-y-6">
             <h3 className="font-semibold">Feature Distributions</h3>
-            {isLoading ? (
+            {isLoading || !results ? (
               <Skeleton className="h-64 w-full" />
             ) : (
-              results && <DistributionChart data={results.eda.distributions} />
+              <DistributionChart data={results.eda.distributions} />
             )}
             <AiExplanation
               isLoading={isLoading}
@@ -257,18 +257,25 @@ export function AnalysisDashboard({
           isLoading={isLoading}
           value="drift"
         >
-          {isLoading || !results?.drift.detected ? (
+          {isLoading || !results ? (
+            <div className="space-y-2 p-6 pt-0">
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-4 w-full" />
+            </div>
+          ) : !results.drift.applicable ? (
             <p className="p-6 pt-0 text-muted-foreground">
-              {isLoading
-                ? 'Analyzing...'
-                : 'No significant distribution drift was detected.'}
+              Not Applicable: Drift analysis requires a time-based column which was not detected in the dataset.
+            </p>
+          ) : !results.drift.detected ? (
+            <p className="p-6 pt-0 text-muted-foreground">
+              No significant distribution drift was detected.
             </p>
           ) : (
             <AiExplanation
               isLoading={isLoading}
-              explanation={results?.drift.summary ?? ''}
-              recommendation={results?.drift.recommendations}
-              risk={results?.drift.riskLevel}
+              explanation={results.drift.summary}
+              recommendation={results.drift.recommendations}
+              risk={results.drift.riskLevel}
             />
           )}
         </AnalysisCard>
@@ -293,12 +300,34 @@ export function AnalysisDashboard({
           isLoading={isLoading}
           value="bias"
         >
-          <AiExplanation
-            isLoading={isLoading}
-            explanation={results?.bias.explanation ?? ''}
-            recommendation={results?.bias.recommendation}
-            risk={results?.bias.riskLevel}
-          />
+          {isLoading || !results ? (
+            <div className="space-y-4 p-6 pt-0">
+              <Skeleton className="h-4 w-1/4" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <h4 className="font-semibold">Bias Analysis Summary</h4>
+              <ul className="list-disc space-y-2 pl-5 text-muted-foreground">
+                <li>
+                  <strong>Class Imbalance:</strong> {results.bias.classImbalance.summary}
+                </li>
+                <li>
+                  <strong>Feature Dominance:</strong> {results.bias.featureDominance.summary}
+                </li>
+                <li>
+                  <strong>Categorical Distribution:</strong> {results.bias.categoricalDistribution.summary}
+                </li>
+              </ul>
+              <AiExplanation
+                isLoading={isLoading}
+                explanation={results.bias.explanation}
+                recommendation={results.bias.recommendation}
+                risk={results.bias.riskLevel}
+              />
+            </div>
+          )}
         </AnalysisCard>
 
         <AnalysisCard
@@ -321,28 +350,33 @@ export function AnalysisDashboard({
           isLoading={isLoading}
           value="duplicates"
         >
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="rounded-lg bg-secondary/50 p-4">
-                <p className="text-sm text-muted-foreground">
-                  Exact Duplicates
-                </p>
-                <p className="text-2xl font-bold">
-                  {isLoading ? '-' : results!.duplicates.count}
-                </p>
-              </div>
-              <div className="rounded-lg bg-secondary/50 p-4">
-                <p className="text-sm text-muted-foreground">Near Duplicates</p>
-                <p className="text-2xl font-bold">
-                  {isLoading ? '-' : results!.duplicates.nearDuplicates}
-                </p>
-              </div>
+          {isLoading || !results ? (
+            <div className="space-y-4 p-6 pt-0">
+               <Skeleton className="h-20 w-full" />
+               <Skeleton className="h-16 w-full" />
             </div>
-            <AiExplanation
-              isLoading={isLoading}
-              explanation={results?.duplicates.summary ?? ''}
-            />
-          </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="rounded-lg bg-secondary/50 p-4">
+                  <p className="text-sm text-muted-foreground">Duplicate Groups</p>
+                  <p className="text-2xl font-bold">{results.duplicates.duplicateGroups}</p>
+                </div>
+                <div className="rounded-lg bg-secondary/50 p-4">
+                  <p className="text-sm text-muted-foreground">Affected Rows</p>
+                  <p className="text-2xl font-bold">{results.duplicates.affectedRows}</p>
+                </div>
+                <div className="rounded-lg bg-secondary/50 p-4">
+                  <p className="text-sm text-muted-foreground">Dataset Impact</p>
+                  <p className="text-2xl font-bold">{results.duplicates.impactPercentage.toFixed(2)}%</p>
+                </div>
+              </div>
+              <AiExplanation
+                isLoading={isLoading}
+                explanation={results.duplicates.summary}
+              />
+            </div>
+          )}
         </AnalysisCard>
       </Accordion>
     </motion.div>

@@ -8,10 +8,10 @@ import { UploadSection } from '@/components/app/upload-section';
 import { AnalysisDashboard } from '@/components/app/analysis-dashboard';
 import { PreviewSection } from '@/components/app/preview-section';
 import type { AnalysisResult } from '@/types';
-import { mockAnalysisResult } from '@/lib/data';
 import { parseCsvPreview } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { runDataQualityAnalysis } from '@/lib/analysis';
 
 
 export type AnalysisStatus = 'idle' | 'preview' | 'loading' | 'success' | 'error';
@@ -52,16 +52,24 @@ export default function Home() {
     }
   };
   
-  const handleStartAnalysis = (targetColumn: string) => {
+  const handleStartAnalysis = async (targetColumn: string) => {
+    if (!file) return;
     setAnalysisStatus('loading');
     
-    // Simulate API call and analysis
-    setTimeout(() => {
-      // In a real app, you would send the file and targetColumn to a backend service
-      // The service would perform the analysis and return the results
-      setResults(mockAnalysisResult);
+    try {
+      const fileContent = await file.text();
+      const analysisResults = await runDataQualityAnalysis(fileContent, targetColumn);
+      setResults(analysisResults);
       setAnalysisStatus('success');
-    }, 3500); // loading simulation
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Analysis Failed',
+        description: `An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
+      setAnalysisStatus('error');
+    }
   };
 
   const handleReset = () => {
